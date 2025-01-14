@@ -4,46 +4,99 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class CaixaDaLanchonete {
-    private static final Logger logger = LoggerFactory.getLogger(CaixaDaLanchonete.class);
-
     public String calcularTotalCompra(List<String> itens, String pagamento) {
-        // Acessar cada item da lista
-        // Transformar em um array a apartir da virgula.
-        // Achar o valor corresponde o seu codigo
-        // Multiplicar pela quantidade
-        // Colocar em uma variavel de soma.
+        // Criar lista com arrays
+        // Validar item
+        // Validar lista item
+        // Validar quantidade
+        // Validar extra
+        // Percorrer e somar lista valida
 
+        
         List<Item> cardapio = this.getListCardapio();
+
 
         List<Double> valores = itens.stream().map(item -> {
             String[] codigoQntd = item.split(",");
 
             String codigoItem = codigoQntd[0];
-            double quantidadeItem = Double.parseDouble(codigoQntd[1]);
+            double quantidadeItem = this.tratarQuantidadeItem(codigoQntd[1]);
+    
 
-            Optional<Item> itemCorrespondente = cardapio.stream()
+            Optional<Item> itemCorrespondenteOptional = cardapio.stream()
                 .filter(itemCardapio -> itemCardapio.getCodigo().equals(codigoItem))
                 .findFirst();
 
-            if(itemCorrespondente.isEmpty()){
-                throw new RuntimeException("Erro");
+            if(itemCorrespondenteOptional.isEmpty()){
+                throw new RuntimeException("Item inválido");
             }
 
-            return itemCorrespondente.get().getValor() * quantidadeItem;
+            Item itemCorrespondente = itemCorrespondenteOptional.get();
+
+            
+
+            return itemCorrespondente.getValor() * quantidadeItem;
 
         }).collect(Collectors.toList());
 
         double total = valores.stream().reduce(0.00, (acc, valor) -> acc + valor);
 
-        if(pagamento.equals("pix")) {
-            total = total * 0.95;
+        double totalFinal = verificarDescontosETaxasPagamento(pagamento, total);
+
+        return String.format("R$ %.2f", totalFinal);
+    }
+
+    private double verificarDescontosETaxasPagamento(String pagamento, double total){
+        double totalFinal;
+
+        switch (pagamento) {
+            case "pix":
+                double descontoPorc = 0.05;
+                totalFinal = total * (1 - descontoPorc);
+                break;
+
+            case "credito":
+                double acrescimoPorc = 0.03;
+                totalFinal = total * (1 + acrescimoPorc);
+                break;
+
+            case "debito":
+            case "dinheiro":
+                totalFinal = total;
+                break;
+
+            default:
+                throw new RuntimeException("Forma de pagamento inválida");
         }
 
-        return String.format("R$ %.2f", total);
+        return totalFinal;
+    }
+
+    protected void validarQuantidadeItensPedido(List<String> itens){
+        if(itens == null || itens.size() == 0){
+           throw new RuntimeException("Não há itens no carrinho de compra");
+        }
+    }
+
+    protected double tratarQuantidadeItem(String quantidadeString){
+        final RuntimeException exception = new RuntimeException("Quantidade inválida");
+
+        try {
+            double quantidadeDouble = Double.parseDouble(quantidadeString);
+
+            if(quantidadeDouble <= 0){
+                throw exception;
+            }
+
+            return quantidadeDouble;
+
+        } catch (NullPointerException | NumberFormatException e){
+            throw exception;
+        }
+    }
+
+    protected void validarVinculoentreExtraPrincipal(List<String> itens){
     }
 
     public List<Item> getListCardapio(){
