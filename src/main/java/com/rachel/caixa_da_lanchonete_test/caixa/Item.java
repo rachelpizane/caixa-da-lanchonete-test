@@ -7,10 +7,18 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @Builder
 public class Item {
     private String codigo;
+    private TipoItem tipoItem;
+    private String codigoPrincipalVinculado;
     private String descricao;
     private double valor;
+
+    
+    public void setCodigoPrincpalVinculado(String codigoPrincipalVinculado){
+        if(this.tipoItem == TipoItem.EXTRA){
+            this.codigoPrincipalVinculado = codigoPrincipalVinculado;
+        }
+    }
 }
