@@ -6,48 +6,41 @@ import java.util.stream.Collectors;
 
 public class CaixaDaLanchonete {
     public String calcularTotalCompra(List<String> itens, String pagamento) {
-        // Criar lista com arrays
-        // Validar item
-        // Validar lista item
-        // Validar quantidade
-        // Validar extra
-        // Percorrer e somar lista valida
 
-        
-        List<Item> cardapio = this.getListCardapio();
+        this.validarQuantidadeItensPedido(itens);
 
+        List<ItemCardapio> cardapio = this.getListCardapio();
+        List<ItemCarrinho> itensTratado = this.tratarListaItens(itens);
 
-        List<Double> valores = itens.stream().map(item -> {
-            String[] codigoQntd = item.split(",");
+        List<Double> totalPorItem = itensTratado.stream().map(itemCompra -> {
+            ItemCardapio itemCardapio; 
 
-            String codigoItem = codigoQntd[0];
-            double quantidadeItem = this.tratarQuantidadeItem(codigoQntd[1]);
-    
-
-            Optional<Item> itemCorrespondenteOptional = cardapio.stream()
-                .filter(itemCardapio -> itemCardapio.getCodigo().equals(codigoItem))
+            Optional<ItemCardapio> itemCardapioOptional = cardapio.stream()
+                .filter(itemCardapioPercorrido -> itemCardapioPercorrido.getCodigo().equals(itemCompra.getCodigo()))
                 .findFirst();
 
-            if(itemCorrespondenteOptional.isEmpty()){
+            if(itemCardapioOptional.isEmpty()){
                 throw new RuntimeException("Item inválido");
             }
 
-            Item itemCorrespondente = itemCorrespondenteOptional.get();
+            itemCardapio = itemCardapioOptional.get();
 
-            
+            this.validarVinculoentreExtraPrincipal(itensTratado, itemCardapio);
 
-            return itemCorrespondente.getValor() * quantidadeItem;
-
+            return itemCardapio.getValor() * itemCompra.getQuantidade();
         }).collect(Collectors.toList());
 
-        double total = valores.stream().reduce(0.00, (acc, valor) -> acc + valor);
+        double totalCompra = totalPorItem.stream().reduce(0.00, (acc, valor) -> acc + valor);
+        double totalCompraFinal = tratarDescontosETaxasPagamento(pagamento, totalCompra);
 
-        double totalFinal = verificarDescontosETaxasPagamento(pagamento, total);
-
-        return String.format("R$ %.2f", totalFinal);
+        return String.format("R$ %.2f", totalCompraFinal);
     }
 
-    private double verificarDescontosETaxasPagamento(String pagamento, double total){
+    public List<ItemCardapio> getListCardapio(){
+        return null;
+    }
+
+    private double tratarDescontosETaxasPagamento(String pagamento, double total){
         double totalFinal;
 
         switch (pagamento) {
@@ -73,33 +66,51 @@ public class CaixaDaLanchonete {
         return totalFinal;
     }
 
-    protected void validarQuantidadeItensPedido(List<String> itens){
-        if(itens == null || itens.size() == 0){
-           throw new RuntimeException("Não há itens no carrinho de compra");
-        }
-    }
-
-    protected double tratarQuantidadeItem(String quantidadeString){
+    protected int tratarQuantidadeItem(String quantidadeString){
         final RuntimeException exception = new RuntimeException("Quantidade inválida");
 
         try {
-            double quantidadeDouble = Double.parseDouble(quantidadeString);
+            int  quantidadeInt = Integer.parseInt(quantidadeString);
 
-            if(quantidadeDouble <= 0){
+            if(quantidadeInt <= 0){
                 throw exception;
             }
 
-            return quantidadeDouble;
+            return quantidadeInt;
 
         } catch (NullPointerException | NumberFormatException e){
             throw exception;
         }
     }
 
-    protected void validarVinculoentreExtraPrincipal(List<String> itens){
+    protected List<ItemCarrinho> tratarListaItens(List<String> itens) {
+        List<ItemCarrinho> itensTratado = itens.stream().map(item -> {
+            String[] codigoQntd = item.split(",");
+
+            String codigoItem = codigoQntd[0];
+            int quantidadeItem = this.tratarQuantidadeItem(codigoQntd[1]);
+
+            return new ItemCarrinho(codigoItem, quantidadeItem);
+        }).collect(Collectors.toList());
+
+        return itensTratado;
     }
 
-    public List<Item> getListCardapio(){
-        return null;
+    protected void validarQuantidadeItensPedido(List<String> itens){
+        if(itens == null || itens.size() == 0){
+           throw new RuntimeException("Não há itens no carrinho de compra");
+        }
+    }
+
+    protected void validarVinculoentreExtraPrincipal(List<ItemCarrinho> itensTratados, ItemCardapio itemCardapio){
+        if(itemCardapio.getTipoItem() == TipoItem.EXTRA){
+            boolean existeItemPrincipal = itensTratados.stream().anyMatch(item -> {
+                return itemCardapio.getCodigoPrincipalVinculado().equals(item.getCodigo());
+            });
+
+            if(!existeItemPrincipal){
+                throw new RuntimeException("Item extra não pode ser pedido sem o principal");
+            }
+        }
     }
 }
