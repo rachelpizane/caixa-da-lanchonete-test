@@ -1,6 +1,5 @@
 package com.rachel.caixa_da_lanchonete_test.caixa;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
